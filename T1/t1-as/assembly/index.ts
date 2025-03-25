@@ -1,6 +1,4 @@
-// The entry file of your WebAssembly module.
-
-export function greedySnakeMove(snake: i32[], fruit: i32[]): i32 {
+export function greedy_snake_move(snake: i32[], fruit: i32[]): i32 {
   const headX = snake[0];
   const headY = snake[1];
   const fruitX = fruit[0];
@@ -20,9 +18,9 @@ export function greedySnakeMove(snake: i32[], fruit: i32[]): i32 {
     let newX = headX;
     let newY = headY;
     switch (dir) {
-      case 0: newY -= 1; break;
+      case 0: newY += 1; break; // 注意我们的坐标系，Y增大是向上（0）
       case 1: newX -= 1; break;
-      case 2: newY += 1; break;
+      case 2: newY -= 1; break;
       case 3: newX += 1; break;
     }
 
@@ -33,12 +31,12 @@ export function greedySnakeMove(snake: i32[], fruit: i32[]): i32 {
     }
 
     // 撞身体
-    for (let i = 2; i < snake.length; i += 2) {
-      if (snake[i] === newX && snake[i+1] === newY) {
-        directions[dir] = false;
-        break;
-      }
-    }
+    // for (let i = 2; i < snake.length; i += 2) {
+    //   if (snake[i] === newX && snake[i+1] === newY) {
+    //     directions[dir] = false;
+    //     break;
+    //   }
+    // }
   }
 
   // 选择向果子移动的方向
@@ -63,8 +61,8 @@ function getCurrentDirection(snake: i32[]): i32 {
 
   if (headX > bodyX) return 3; // 右
   if (headX < bodyX) return 1; // 左
-  if (headY > bodyY) return 2; // 下
-  if (headY < bodyY) return 0; // 上
+  if (headY > bodyY) return 0; // 上
+  if (headY < bodyY) return 2; // 下
   return 0;
 }
 
@@ -72,7 +70,7 @@ function getCurrentDirection(snake: i32[]): i32 {
 function getOppositeDirection(dir: i32): i32 {
   switch (dir) {
     case 0: return 2;
-    case 1: return -1;
+    case 1: return 3;
     case 2: return 0;
     case 3: return 1;
     default: return 0;
@@ -86,7 +84,7 @@ function getDirectionTowardsFruit(
 ): i32 {
   if (headX < fruitX) return 3;
   if (headX > fruitX) return 1;
-  if (headY < fruitY) return 2;
-  if (headY > fruitY) return 0;
+  if (headY < fruitY) return 0;
+  if (headY > fruitY) return 2;
   return 0;
 }
