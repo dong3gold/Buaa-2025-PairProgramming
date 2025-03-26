@@ -5,7 +5,7 @@ import { greedy_snake_move } from "./t1-as/build/release.js";
 // import { greedy_snake_move } from "./t1_rust/pkg/t1_rust.js";
 // [Write your own "import" for other PLs.]
 
-function greedy_snake_fn_checker (snake, food) {
+function greedy_snake_fn_checker (snake, food, greedy_snake_move) {
     let now_snake = [
         snake[0], snake[1], snake[2], snake[3], snake[4], snake[5], snake[6], snake[7]
     ];
