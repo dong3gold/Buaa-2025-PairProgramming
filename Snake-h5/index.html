@@ -32,6 +32,7 @@
         <label for="foodYInput">初始食物 Y 坐标: </label>
         <input id="foodYInput" type="number" value="1" min="1" max="8">
     </div>
+
     <button id="restartButton">重新开始</button>
     <script src="dist/script.js"></script>
     <script>
@@ -83,9 +84,10 @@
 
             if (newHead.x === food.x && newHead.y === food.y) {
                 food = generateFood();
-            } else {
-                snake.pop();
             }
+
+            // 蛇不会变长，只会移动
+            snake.pop();
 
             draw();
         }
