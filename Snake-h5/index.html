@@ -20,6 +20,19 @@
     <h1>8x8 贪吃蛇 AI</h1>
     <canvas id="gameCanvas" width="400" height="400"></canvas>
     <p id="status"></p>
+    <div>
+        <label for="snakeRawArrayInput">初始蛇位置 (格式: x1,y1,x2,y2,...): </label>
+        <input id="snakeRawArrayInput" type="text" value="4,4,4,5,4,6,4,7">
+    </div>
+    <div>
+        <label for="foodXInput">初始食物 X 坐标: </label>
+        <input id="foodXInput" type="number" value="1" min="1" max="8">
+    </div>
+    <div>
+        <label for="foodYInput">初始食物 Y 坐标: </label>
+        <input id="foodYInput" type="number" value="1" min="1" max="8">
+    </div>
+    <button id="restartButton">重新开始</button>
     <script src="dist/script.js"></script>
     <script>
         // 地图和游戏参数
@@ -30,32 +43,22 @@
         let gameInterval = null;
         let gameOver = false;
 
-        let snakeRawArray = [4, 4, 4, 5, 4, 6, 4, 7]
+        let snakeRawArray = [4, 4, 4, 5, 4, 6, 4, 7];
+        let food = { x: 1, y: 1 };
 
-        // 蛇的状态：用数组表示蛇身（数组第一个元素为蛇头）
         let snake = makeSnake(snakeRawArray);
-        // 初始方向：向右
         let currentDirection = getDirFromSnake(snake);
-        // 随机生成一个食物位置
-        let food = { x: 1, y: 1 }; // generateFood();
 
-        // 用户可以重写此函数，实现 AI 决策
-        // 参数包括：snake（蛇身坐标数组）、food（食物位置对象）、currentDirection（当前运动方向）、gridSize（地图大小）
-        // 返回值为字符串："up"、"down"、"left" 或 "right"
         window.nextMovement = getNextMove;
 
-        // 游戏主循环
         function gameLoop() {
             if (gameOver) return;
 
-            // 调用 nextMovement 接口获取下一步动作
             const newDirection = window.nextMovement(snake, food, currentDirection, gridSize);
-            // 检查方向是否合法（不能直接反向移动）
             if (isValidDirectionChange(currentDirection, newDirection)) {
                 currentDirection = newDirection;
             }
 
-            // 计算下一个蛇头位置
             const newHead = { x: snake[0].x, y: snake[0].y };
             switch (currentDirection) {
                 case "up": newHead.y += 1; break;
@@ -64,37 +67,29 @@
                 case "right": newHead.x += 1; break;
             }
 
-            // 检查边界（超出边界则死亡）
             if (newHead.x < 1 || newHead.x >= gridSize + 1 || newHead.y < 1 || newHead.y >= gridSize + 1) {
                 endGame("蛇撞墙了！");
                 return;
             }
 
-            // 检查自撞
             if (snake.some(segment => segment.x === newHead.x && segment.y === newHead.y)) {
-                // 防止蛇头恰好移动到尾部的位置时被判定为自撞
                 if (snake.length > 1 && (snake[snake.length - 1].x !== newHead.x || snake[snake.length - 1].y !== newHead.y)) {
                     endGame("蛇咬到自己了！");
                     return;
                 }
             }
 
-            // 将新的蛇头插入数组前端
             snake.unshift(newHead);
 
-            // 判断是否吃到食物
             if (newHead.x === food.x && newHead.y === food.y) {
-                // 吃到食物后生成新的食物
                 food = generateFood();
             } else {
-                // 未吃到食物，尾部出队
                 snake.pop();
             }
 
             draw();
         }
 
-        // 检查新方向是否有效（不能直接反向移动）
         function isValidDirectionChange(current, next) {
             const opposites = {
                 "up": "down",
@@ -105,7 +100,6 @@
             return next && opposites[current] !== next;
         }
 
-        // 随机生成食物位置，确保不生成在蛇身上
         function generateFood() {
             let pos;
             while (true) {
@@ -115,12 +109,9 @@
             return pos;
         }
 
-        // 绘制游戏状态
         function draw() {
-            // 清除画布
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 绘制背景网格
             ctx.strokeStyle = "#eee";
             for (let i = 0; i < gridSize; i++) {
                 for (let j = 0; j < gridSize; j++) {
@@ -128,18 +119,15 @@
                 }
             }
 
-            // 绘制食物
             ctx.fillStyle = "red";
             ctx.fillRect((food.x - 1) * cellSize, (8 - food.y) * cellSize, cellSize, cellSize);
 
-            // 绘制蛇（蛇头用深绿，蛇身用浅绿）
             snake.forEach((segment, index) => {
                 ctx.fillStyle = index === 0 ? "darkgreen" : "green";
                 ctx.fillRect((segment.x - 1) * cellSize, (8 - segment.y) * cellSize, cellSize, cellSize);
             });
         }
 
-        // 结束游戏
         function endGame(message) {
             gameOver = true;
             clearInterval(gameInterval);
@@ -175,10 +163,28 @@
             return dir;
         }
 
-        // 启动游戏循环（每300毫秒移动一次）
+        function restartGame() {
+            clearInterval(gameInterval);
+            gameOver = false;
+
+            const snakeInput = document.getElementById("snakeRawArrayInput").value;
+            const foodXInput = parseInt(document.getElementById("foodXInput").value, 10);
+            const foodYInput = parseInt(document.getElementById("foodYInput").value, 10);
+
+            snakeRawArray = snakeInput.split(",").map(Number);
+            food = { x: foodXInput, y: foodYInput };
+
+            snake = makeSnake(snakeRawArray);
+            currentDirection = getDirFromSnake(snake);
+            document.getElementById("status").textContent = "";
+            gameInterval = setInterval(gameLoop, 300);
+            draw();
+        }
+
+        document.getElementById("restartButton").addEventListener("click", restartGame);
+
         gameInterval = setInterval(gameLoop, 300);
         draw();
     </script>
-</body>
 
 </html>
