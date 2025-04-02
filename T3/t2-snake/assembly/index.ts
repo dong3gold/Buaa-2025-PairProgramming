@@ -1,7 +1,101 @@
 // 记录当前路径的方向序列
 let pathDirections: i32[] = [];
 
-export function greedy_snake_move_barriers(
+// random.ts
+
+// 线性同余生成器类
+class LCG {
+  private seed: u32;
+
+  constructor(seed: u32) {
+    this.seed = seed;
+  }
+
+  // 线性同余算法
+  next(): u32 {
+    // 使用常见的 LCG 参数 (a, c, m)
+    this.seed = <u32>((1664525 * this.seed + 1013904223) % 4294967296);
+    return this.seed;
+  }
+
+  // 生成 0 到 1 之间的浮点数
+  nextFloat(): f64 {
+    return this.next() / 4294967296.0;
+  }
+
+  // 生成指定范围的整数 [min, max]
+  nextInt(min: i32, max: i32): i32 {
+    const range = max - min + 1;
+    return min + i32(this.next() % u32(range));
+  }
+}
+
+// 导出函数
+let _rng = new LCG(123456789); // 默认种子
+
+// 设置种子
+function seed(s: u32): void {
+  _rng = new LCG(s);
+}
+
+// 获取随机 u32
+function random(): u32 {
+  return _rng.next();
+}
+
+// 获取 0-1 之间的随机浮点数
+function randomFloat(): f64 {
+  return _rng.nextFloat();
+}
+
+// 获取指定范围的随机整数 [min, max]
+function randomInt(min: i32, max: i32): i32 {
+  return _rng.nextInt(min, max);
+}
+
+let foodX = -1, foodY = -1;
+
+function hasFood(x: i32, y: i32, foodNum: i32, foods: i32[]): bool {
+  for (let i = 0; i < foodNum; i++) {
+    if (foods[i * 2] === x && foods[i * 2 + 1] === y) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function greedy_snake_step(
+  n: i32,
+  snake: i32[],
+  snakeNum: i32,
+  otherSnake: i32[],
+  foodNum: i32,
+  foods: i32[],
+  round: i32
+): i32 {
+  if (foodX === -1 || foodY === -1 || !hasFood(foodX, foodY, foodNum, foods)) {
+    let _foodIdx = randomInt(0, foodNum - 1);
+    foodX = foods[_foodIdx * 2];
+    foodY = foods[_foodIdx * 2 + 1];
+  }
+
+  let barriers: i32[] = [];
+
+  for (let i = 0; i < snakeNum; i++) {
+    barriers.push(otherSnake[i * 8]);
+    barriers.push(otherSnake[i * 8 + 1]);
+    barriers.push(otherSnake[i * 8 + 2]);
+    barriers.push(otherSnake[i * 8 + 3]);
+    barriers.push(otherSnake[i * 8 + 4]);
+    barriers.push(otherSnake[i * 8 + 5]);
+  }
+
+  let res = greedy_snake_move_barriers(snake, [foodX, foodY], barriers);
+  return res;
+}
+
+
+function greedy_snake_move_barriers(
   snake: i32[],
   fruit: i32[],
   barriers: i32[]
