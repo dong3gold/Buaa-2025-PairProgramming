@@ -7,17 +7,8 @@ let snakeReachable: StaticArray<i32> | null = null;
 let visMap: StaticArray<i32> | null = null;
 let safeDirs: StaticArray<bool> = new StaticArray<bool>(4);
 
+// 食物权重，食物权重半径，自由权重（待办），危险权重
 const foodWeight = 5, foodWeightRaduis = 2, freedomWeight = 10, dangerWeight = 6;
-
-function foodWeightFunc(foodX: i32, foodY: i32, x: i32, y: i32): f64 {
-  const dx = foodX - x;
-  const dy = foodY - y;
-  const distance = dx * dx + dy * dy;
-  if (distance < foodWeightRaduis * foodWeightRaduis) {
-    return foodWeight / (distance + 1);
-  }
-  return 0;
-}
 
 export function greedy_snake_step(
   n: i32,
@@ -28,21 +19,23 @@ export function greedy_snake_step(
   foods: i32[],
   round: i32
 ): i32 {
-  if (snakeReachable === null || visMap === null) {
+
+  // 初始化全局变量
+  if (snakeReachable === null || visMap === null || mapSize !== n) {
     mapSize = n;
     snakeReachable = new StaticArray<i32>(mapSize * mapSize);
     visMap = new StaticArray<i32>(mapSize * mapSize * 4);
   }
+
+
   let curDirection = getCurrentDirection(snake);
   let curX = snake[0];
   let curY = snake[1];
 
-  let snakes = [snake];
-  for (let i = 0; i < snakeNum; i++) {
-    snakes.push(otherSnake.slice(i * 8, i * 8 + 8));
-  }
-
+  // 计算当前蛇的可达性
   getSafeDirection(snake, otherSnake, safeDirs);
+
+
   computeAllReachable(snakeNum, otherSnake, snakeReachable!, visMap!, 2);
 
   const directions = [
@@ -56,6 +49,7 @@ export function greedy_snake_step(
   let maxWeight: f64 = -1;
   let bestDir = curDirection;
 
+  // 分别计算四个方向的权重
   for (let dir = 0; dir < 4; dir++) {
     if (!safeDirs[dir]) {
       weights[dir] = -1;
@@ -66,7 +60,6 @@ export function greedy_snake_step(
 
     const foodWeight = getFoodWeights(newX, newY, foodNum, foods);
     const dangerWeight = getDangerWeight(newX, newY, snakeReachable!);
-
     const weight = foodWeight - dangerWeight + freedomWeight;
     weights[dir] = weight;
     if (weight > maxWeight) {
@@ -82,17 +75,8 @@ function cleanSnakeReachable(snakeReachable: StaticArray<i32>): void {
   snakeReachable.fill(-1);
 }
 
-function getFoodWeights(x: i32, y: i32, foodNum: i32, foods: i32[]): f64 {
-  let ans: f64 = 0;
-  for (let i = 0; i < foodNum; i++) {
-    const foodX = foods[i * 2];
-    const foodY = foods[i * 2 + 1];
-    ans += foodWeightFunc(foodX, foodY, x, y);
-  }
-  return ans;
-}
 
-// BFS计算可达性
+// BFS计算可达性（没有障碍，要求传入蛇头坐标要减1）
 function computeReachable(
   headX: i32,
   headY: i32,
@@ -147,6 +131,7 @@ function computeReachable(
   }
 }
 
+// 计算除当前蛇外的所有蛇的可达性（即危险位置）
 function computeAllReachable(snakeNum: i32, otherSnakes: i32[], snakeReachable: StaticArray<i32>,
   visMap: StaticArray<i32>, steps: i32
 ): void {
@@ -157,6 +142,28 @@ function computeAllReachable(snakeNum: i32, otherSnakes: i32[], snakeReachable: 
     const otherDir = getCurrentDirectionByXY(otherX, otherY, otherSnakes[i * 8 + 2], otherSnakes[i * 8 + 3]);
     computeReachable(otherX - 1, otherY - 1, otherDir, steps, snakeReachable, visMap);
   }
+}
+
+// 计算全部食物对x,y的权重
+function getFoodWeights(x: i32, y: i32, foodNum: i32, foods: i32[]): f64 {
+  let ans: f64 = 0;
+  for (let i = 0; i < foodNum; i++) {
+    const foodX = foods[i * 2];
+    const foodY = foods[i * 2 + 1];
+    ans += foodWeightFunc(foodX, foodY, x, y);
+  }
+  return ans;
+}
+
+// 计算单个食物对x,y的权重
+function foodWeightFunc(foodX: i32, foodY: i32, x: i32, y: i32): f64 {
+  const dx = foodX - x;
+  const dy = foodY - y;
+  const distance = dx * dx + dy * dy;
+  if (distance < foodWeightRaduis * foodWeightRaduis) {
+    return foodWeight / (distance + 1);
+  }
+  return 0;
 }
 
 function getDangerWeight(x: i32, y: i32,  snakeReachable: StaticArray<i32>): f64 {
@@ -183,6 +190,7 @@ function getCurrentDirection(snake: i32[]): i32 {
   return 0;
 }
 
+// 辅助函数：获取当前方向（根据坐标）
 function getCurrentDirectionByXY(headX: i32,
   headY: i32,
   bodyX: i32,
@@ -205,6 +213,7 @@ function getOppositeDirection(dir: i32): i32 {
   }
 }
 
+// 获取安全方向
 function getSafeDirection(snake: i32[], otherSnakes: i32[], safeDirs: StaticArray<bool>): void {
   const headX = snake[0];
   const headY = snake[1];
