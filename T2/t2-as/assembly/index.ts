@@ -57,8 +57,8 @@ function computePath(
   prevDir.set(`${headX},${headY}`, -1);
 
   while (queue.length >= 2) {
-    const x = queue.shift()!;
-    const y = queue.shift()!;
+    const x = queue.shift();
+    const y = queue.shift();
 
     // 找到，则返回路径
     if (x === fruitX && y === fruitY) {
@@ -81,8 +81,7 @@ function computePath(
       if (nx >= 1 && nx <= 8 &&
           ny >= 1 && ny <= 8 &&
           !visited.has(key) &&
-          !barriers.has(key) &&
-          !isSnakeBody(nx, ny, snake)
+          !barriers.has(key)
       ) {
         visited.add(key);
         queue.push(nx);
@@ -97,7 +96,7 @@ function computePath(
 
 // 利用map, 生成方向序列
 function buildPath(
-  prevDir: Map<string, i32>
+  prevDir: Map<string, i32>,
   x: i32,
   y: i32
 ): i32[] {
@@ -106,7 +105,7 @@ function buildPath(
   let currentY = y;
 
   while (prevDir.get(`${currentX},${currentY}`) !== -1) { // -1 为初始节点
-    const dir = <i32>prevDir.get(`${currentX},${currentY}`)!;
+    const dir = <i32>prevDir.get(`${currentX},${currentY}`);
     path.unshift(dir);
     // 根据方向反向回溯到前一个坐标
     switch (dir) {
@@ -121,14 +120,14 @@ function buildPath(
 }
 
 // 辅助函数：判断是否是蛇身
-function isSnakeBody(x: i32, y: i32, snake: i32[]): boolean {
-  for (let i = 0; i < snake.length; i += 2) {
-    if (snake[i] === x && snake[i + 1] === y) {
-      return true;
-    }
-  }
-  return false;
-}
+// function isSnakeBody(x: i32, y: i32, snake: i32[]): boolean {
+//   for (let i = 0; i < snake.length; i += 2) {
+//     if (snake[i] === x && snake[i + 1] === y) {
+//       return true;
+//     }
+//   }
+//   return false;
+// }
 
 // 辅助函数：获取当前方向
 function getCurrentDirection(snake: i32[]): i32 {
