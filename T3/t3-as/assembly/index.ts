@@ -4,18 +4,34 @@ let pathDirections: i32[] = [];
 let mapSize = 8; // 地图大小
 // 记录每个位置蛇的可能到达情况
 let snakeReachable: StaticArray<i32> | null = null;
+let visMap: StaticArray<i32> | null = null;
+let safeDirs: StaticArray<bool> = new StaticArray<bool>(4);
 
-export function greedy_snake_move_barriers(
+const foodWeight = 5, foodWeightRaduis = 2, freedomWeight = 10, dangerWeight = 6;
+
+function foodWeightFunc(foodX: i32, foodY: i32, x: i32, y: i32): f64 {
+  const dx = foodX - x;
+  const dy = foodY - y;
+  const distance = dx * dx + dy * dy;
+  if (distance < foodWeightRaduis * foodWeightRaduis) {
+    return foodWeight / (distance + 1);
+  }
+  return 0;
+}
+
+export function greedy_snake_step(
   n: i32,
   snake: i32[],
   snakeNum: i32,
   otherSnake: i32[],
   foodNum: i32,
   foods: i32[],
+  round: i32
 ): i32 {
-  if (snakeReachable === null) {
+  if (snakeReachable === null || visMap === null) {
     mapSize = n;
     snakeReachable = new StaticArray<i32>(mapSize * mapSize);
+    visMap = new StaticArray<i32>(mapSize * mapSize * 4);
   }
   let curDirection = getCurrentDirection(snake);
   let curX = snake[0];
@@ -26,33 +42,79 @@ export function greedy_snake_move_barriers(
     snakes.push(otherSnake.slice(i * 8, i * 8 + 8));
   }
 
+  getSafeDirection(snake, otherSnake, safeDirs);
+  computeAllReachable(snakeNum, otherSnake, snakeReachable!, visMap!, 2);
+
+  const directions = [
+    [0, 1], // 上（0）
+    [-1, 0], // 左（1）
+    [0, -1], // 下（2）
+    [1, 0]   // 右（3）
+  ];
+
+  let weights = new StaticArray<f64>(4);
+  let maxWeight: f64 = -1;
+  let bestDir = curDirection;
+
+  for (let dir = 0; dir < 4; dir++) {
+    if (!safeDirs[dir]) {
+      weights[dir] = -1;
+      continue;
+    }
+    const newX = curX + directions[dir][0];
+    const newY = curY + directions[dir][1];
+
+    const foodWeight = getFoodWeights(newX, newY, foodNum, foods);
+    const dangerWeight = getDangerWeight(newX, newY, snakeReachable!);
+
+    const weight = foodWeight - dangerWeight + freedomWeight;
+    weights[dir] = weight;
+    if (weight > maxWeight) {
+      maxWeight = weight;
+      bestDir = dir;
+    }
+  }
+
+  return bestDir;
 }
 
-// BFS计算路径方向序列
+function cleanSnakeReachable(snakeReachable: StaticArray<i32>): void {
+  snakeReachable.fill(-1);
+}
+
+function getFoodWeights(x: i32, y: i32, foodNum: i32, foods: i32[]): f64 {
+  let ans: f64 = 0;
+  for (let i = 0; i < foodNum; i++) {
+    const foodX = foods[i * 2];
+    const foodY = foods[i * 2 + 1];
+    ans += foodWeightFunc(foodX, foodY, x, y);
+  }
+  return ans;
+}
+
+// BFS计算可达性
 function computeReachable(
-  snakes: i32[][],
-  s_index: i32,
-): i32[] | null {
-  const headX = snakes[s_index][0];
-  const headY = snakes[s_index][1];
-  const fruitX = fruit[0];
-  const fruitY = fruit[1];
+  headX: i32,
+  headY: i32,
+  curDir: i32,
+  steps: i32,
+  snakeReachable: StaticArray<i32>,
+  visMap: StaticArray<i32>,
+): void {
+  visMap.fill(0);
 
   // BFS 队列
-  const queue: i32[] = [headX, headY];
-  const visited = new Set<string>();
-  const prevDir = new Map<string, i32>(); // -1 表示无前驱
-
-  visited.add(`${headX},${headY}`);
-  prevDir.set(`${headX},${headY}`, -1);
+  const queue: i32[] = [headX, headY, curDir, 0];
+  visMap[(headX * mapSize + headY) * 4 + curDir] = 1;
+  snakeReachable[(headX * mapSize + headY)] = 0;
 
   while (queue.length >= 2) {
     const x = queue.shift();
     const y = queue.shift();
-
-    // 找到，则返回路径
-    if (x === fruitX && y === fruitY) {
-      return buildPath(prevDir, x, y);
+    const dir = queue.shift();
+    const step = queue.shift();
+    if (step > steps) {
+      continue;
     }
 
     // 方向数组
@@ -64,114 +126,48 @@ function computeReachable(
     ];
 
     for (let i = 0; i < directions.length; i++) {
+      if (i == getOppositeDirection(dir))
+        continue;
       const nx = directions[i][0];
       const ny = directions[i][1];
-      const dir = directions[i][2];
-      const key = `${nx},${ny}`;
-      if (nx >= 1 && nx <= 8 &&
-          ny >= 1 && ny <= 8 &&
-          !visited.has(key)
+      const ndir = directions[i][2];
+      const loc = (nx * mapSize + ny);
+      if (nx >= 0 && nx < 8 &&
+        ny >= 0 && ny < 8 &&
+        visMap[(loc * 4 + ndir)] == 0
       ) {
-        visited.add(key);
+        visMap[(loc * 4 + ndir)] = step + 1;
         queue.push(nx);
         queue.push(ny);
-        prevDir.set(key, dir); // 设置前驱
+        queue.push(ndir);
+        queue.push(step + 1);
+        snakeReachable[loc] = snakeReachable[loc] == -1 ? step + 1 : min(snakeReachable[loc], step + 1);
       }
     }
   }
-
-  return null;
 }
 
-// BFS计算路径方向序列
-function computePath(
-  snake: i32[],
-  fruit: i32[]
-): i32[] | null {
-  const headX = snake[0];
-  const headY = snake[1];
-  const fruitX = fruit[0];
-  const fruitY = fruit[1];
-
-  // BFS 队列
-  const queue: i32[] = [headX, headY];
-  const visited = new Set<string>();
-  const prevDir = new Map<string, i32>(); // -1 表示无前驱
-
-  visited.add(`${headX},${headY}`);
-  prevDir.set(`${headX},${headY}`, -1);
-
-  while (queue.length >= 2) {
-    const x = queue.shift();
-    const y = queue.shift();
-
-    // 找到，则返回路径
-    if (x === fruitX && y === fruitY) {
-      return buildPath(prevDir, x, y);
-    }
-
-    // 方向数组
-    const directions = [
-      [x, y + 1, 0], // 上（0）
-      [x - 1, y, 1], // 左（1）
-      [x, y - 1, 2], // 下（2）
-      [x + 1, y, 3]  // 右（3）
-    ];
-
-    for (let i = 0; i < directions.length; i++) {
-      const nx = directions[i][0];
-      const ny = directions[i][1];
-      const dir = directions[i][2];
-      const key = `${nx},${ny}`;
-      if (nx >= 1 && nx <= 8 &&
-          ny >= 1 && ny <= 8 &&
-          !visited.has(key)
-      ) {
-        visited.add(key);
-        queue.push(nx);
-        queue.push(ny);
-        prevDir.set(key, dir); // 设置前驱
-      }
-    }
+function computeAllReachable(snakeNum: i32, otherSnakes: i32[], snakeReachable: StaticArray<i32>,
+  visMap: StaticArray<i32>, steps: i32
+): void {
+  cleanSnakeReachable(snakeReachable);
+  for (let i = 0; i < snakeNum; i++) {
+    const otherX = otherSnakes[i * 8];
+    const otherY = otherSnakes[i * 8 + 1];
+    const otherDir = getCurrentDirectionByXY(otherX, otherY, otherSnakes[i * 8 + 2], otherSnakes[i * 8 + 3]);
+    computeReachable(otherX - 1, otherY - 1, otherDir, steps, snakeReachable, visMap);
   }
-
-  return null;
 }
 
-// 利用map, 生成方向序列
-function buildPath(
-  prevDir: Map<string, i32>,
-  x: i32,
-  y: i32
-): i32[] {
-  const path: i32[] = [];
-  let currentX = x;
-  let currentY = y;
-
-  while (prevDir.get(`${currentX},${currentY}`) !== -1) { // -1 为初始节点
-    const dir = <i32>prevDir.get(`${currentX},${currentY}`);
-    path.unshift(dir);
-    // 根据方向反向回溯到前一个坐标
-    switch (dir) {
-      case 0: currentY -= 1; break;
-      case 1: currentX += 1; break;
-      case 2: currentY += 1; break;
-      case 3: currentX -= 1; break;
-    }
+function getDangerWeight(x: i32, y: i32,  snakeReachable: StaticArray<i32>): f64 {
+  let ans: f64 = 0;
+  let _x = x - 1;
+  let _y = y - 1;
+  if (snakeReachable[_x * mapSize + _y] > 0) {
+    ans = dangerWeight / (snakeReachable[_x * mapSize + _y] * snakeReachable[_x * mapSize + _y]);
   }
-
-  return path;
+  return ans;
 }
-
-// 辅助函数：判断是否是蛇身
-// function isSnakeBody(x: i32, y: i32, snake: i32[]): boolean {
-//   for (let i = 0; i < snake.length; i += 2) {
-//     if (snake[i] === x && snake[i + 1] === y) {
-//       return true;
-//     }
-//   }
-//   return false;
-// }
 
 // 辅助函数：获取当前方向
 function getCurrentDirection(snake: i32[]): i32 {
@@ -185,4 +181,67 @@ function getCurrentDirection(snake: i32[]): i32 {
   if (headY > bodyY) return 0; // 上
   if (headY < bodyY) return 2; // 下
   return 0;
+}
+
+function getCurrentDirectionByXY(headX: i32,
+  headY: i32,
+  bodyX: i32,
+  bodyY: i32): i32 {
+  if (headX > bodyX) return 3; // 右
+  if (headX < bodyX) return 1; // 左
+  if (headY > bodyY) return 0; // 上
+  if (headY < bodyY) return 2; // 下
+  return 0;
+}
+
+// 获取相反方向
+function getOppositeDirection(dir: i32): i32 {
+  switch (dir) {
+    case 0: return 2;
+    case 1: return 3;
+    case 2: return 0;
+    case 3: return 1;
+    default: return 0;
+  }
+}
+
+function getSafeDirection(snake: i32[], otherSnakes: i32[], safeDirs: StaticArray<bool>): void {
+  const headX = snake[0];
+  const headY = snake[1];
+
+  const currentDirection = getCurrentDirection(snake);
+  const forbiddenDirection = getOppositeDirection(currentDirection); // 排除相反方向
+
+  // 所有方向为安全
+  safeDirs.fill(1);
+
+  // 排除相反的方向
+  safeDirs[forbiddenDirection] = false;
+  for (let dir = 0; dir < 4; dir++) {
+    if (!safeDirs[dir]) continue;
+
+    let newX = headX;
+    let newY = headY;
+    switch (dir) {
+      case 0: newY += 1; break;
+      case 1: newX -= 1; break;
+      case 2: newY -= 1; break;
+      case 3: newX += 1; break;
+    }
+
+    // 撞墙
+    if (newX < 1 || newX > 8 || newY < 1 || newY > 8) {
+      safeDirs[dir] = false;
+      continue;
+    }
+
+    for (let i = 0; i < otherSnakes.length; i += 2) {
+      const otherX = otherSnakes[i];
+      const otherY = otherSnakes[i + 1];
+      if (otherX === newX && otherY === newY) {
+        safeDirs[dir] = false;
+        break;
+      }
+    }
+  }
 }
