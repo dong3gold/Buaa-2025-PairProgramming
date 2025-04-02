@@ -64,6 +64,8 @@ function hasFood(x: i32, y: i32, foodNum: i32, foods: i32[]): bool {
   return false;
 }
 
+let mapSize = 8;
+
 export function greedy_snake_step(
   n: i32,
   snake: i32[],
@@ -73,6 +75,10 @@ export function greedy_snake_step(
   foods: i32[],
   round: i32
 ): i32 {
+  if (mapSize !== n) {
+    mapSize = n;
+  }
+
   if (foodX === -1 || foodY === -1 || !hasFood(foodX, foodY, foodNum, foods)) {
     let _foodIdx = randomInt(0, foodNum - 1);
     foodX = foods[_foodIdx * 2];
@@ -167,8 +173,8 @@ function computePath(
       const ndir = directions[i][2];
       const key = `${nx},${ny},${ndir}`;
       const pos = `${nx},${ny}`;
-      if (nx >= 1 && nx <= 8 &&
-        ny >= 1 && ny <= 8 &&
+      if (nx >= 1 && nx <= mapSize &&
+        ny >= 1 && ny <= mapSize &&
         !visited.has(key) &&
         !barriers.has(pos)) 
       {
@@ -181,7 +187,7 @@ function computePath(
     }
   }
 
-  return -1;
+  return curDir;
 }
 
 // 利用map, 生成方向序列
