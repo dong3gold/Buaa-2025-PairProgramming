@@ -17,17 +17,27 @@ async function instantiate(module, imports = {}) {
   const { exports } = await WebAssembly.instantiate(module, adaptedImports);
   const memory = exports.memory || imports.env.memory;
   const adaptedExports = Object.setPrototypeOf({
-    greedy_snake_step(n, snake, snakeNum, otherSnake, foodNum, foods) {
-      // assembly/index/greedy_snake_step(i32, ~lib/array/Array<i32>, i32, ~lib/array/Array<i32>, i32, ~lib/array/Array<i32>) => i32
+    greedy_snake_step(n, snake, snakeNum, otherSnake, foodNum, foods, round) {
+      // assembly/index/greedy_snake_step(i32, ~lib/array/Array<i32>, i32, ~lib/array/Array<i32>, i32, ~lib/array/Array<i32>, i32) => i32
       snake = __retain(__lowerArray(__setU32, 4, 2, snake) || __notnull());
       otherSnake = __retain(__lowerArray(__setU32, 4, 2, otherSnake) || __notnull());
       foods = __lowerArray(__setU32, 4, 2, foods) || __notnull();
       try {
-        return exports.greedy_snake_step(n, snake, snakeNum, otherSnake, foodNum, foods);
+        return exports.greedy_snake_step(n, snake, snakeNum, otherSnake, foodNum, foods, round);
       } finally {
         __release(snake);
         __release(otherSnake);
       }
+    },
+    computeAllReachable_(snakeNum, otherSnakes, steps) {
+      // assembly/index/computeAllReachable_(i32, ~lib/array/Array<i32>, i32) => void
+      otherSnakes = __lowerArray(__setU32, 4, 2, otherSnakes) || __notnull();
+      exports.computeAllReachable_(snakeNum, otherSnakes, steps);
+    },
+    getFoodWeights(x, y, foodNum, foods) {
+      // assembly/index/getFoodWeights(i32, i32, i32, ~lib/array/Array<i32>) => f64
+      foods = __lowerArray(__setU32, 4, 2, foods) || __notnull();
+      return exports.getFoodWeights(x, y, foodNum, foods);
     },
   }, exports);
   function __liftString(pointer) {
@@ -90,6 +100,10 @@ async function instantiate(module, imports = {}) {
 export const {
   memory,
   greedy_snake_step,
+  initGlobalVars,
+  computeAllReachable_,
+  getFoodWeights,
+  getDangerWeight_,
 } = await (async url => instantiate(
   await (async () => {
     const isNodeOrBun = typeof process != "undefined" && process.versions != null && (process.versions.node != null || process.versions.bun != null);

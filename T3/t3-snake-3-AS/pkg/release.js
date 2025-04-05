@@ -17,13 +17,13 @@ async function instantiate(module, imports = {}) {
   const { exports } = await WebAssembly.instantiate(module, adaptedImports);
   const memory = exports.memory || imports.env.memory;
   const adaptedExports = Object.setPrototypeOf({
-    greedy_snake_step(n, snake, snakeNum, otherSnake, foodNum, foods) {
-      // assembly/index/greedy_snake_step(i32, ~lib/array/Array<i32>, i32, ~lib/array/Array<i32>, i32, ~lib/array/Array<i32>) => i32
+    greedy_snake_step(n, snake, snakeNum, otherSnake, foodNum, foods, round) {
+      // assembly/index/greedy_snake_step(i32, ~lib/array/Array<i32>, i32, ~lib/array/Array<i32>, i32, ~lib/array/Array<i32>, i32) => i32
       snake = __retain(__lowerArray(__setU32, 4, 2, snake) || __notnull());
       otherSnake = __retain(__lowerArray(__setU32, 4, 2, otherSnake) || __notnull());
       foods = __lowerArray(__setU32, 4, 2, foods) || __notnull();
       try {
-        return exports.greedy_snake_step(n, snake, snakeNum, otherSnake, foodNum, foods);
+        return exports.greedy_snake_step(n, snake, snakeNum, otherSnake, foodNum, foods, round);
       } finally {
         __release(snake);
         __release(otherSnake);
